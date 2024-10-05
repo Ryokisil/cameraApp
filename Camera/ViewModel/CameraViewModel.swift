@@ -124,6 +124,7 @@ class CameraViewModel: NSObject {
     }
 }
 
+// 写真が撮影された後に呼ばれるメソッドを実装するためのコード
 extension CameraViewModel: AVCapturePhotoCaptureDelegate {
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         guard let photoData = photo.fileDataRepresentation(),

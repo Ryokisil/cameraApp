@@ -1,9 +1,3 @@
-//
-//  CameraUITests.swift
-//  CameraUITests
-//
-//  Created by silvia on 2024/10/04.
-//
 
 import XCTest
 

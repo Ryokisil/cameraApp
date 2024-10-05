@@ -8,7 +8,7 @@ import SwiftUI
 struct CameraViewControllerRepresentable: UIViewControllerRepresentable {
     
     func makeUIViewController(context: Context) -> CameraViewController {
-        return CameraViewController() // CameraViewControllerをインスタンス化
+        return CameraViewController()
     }
     
     func updateUIViewController(_ uiViewController: CameraViewController, context: Context) {
@@ -31,7 +31,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             return button
         }()
     
-    private var previewLayer: AVCaptureVideoPreviewLayer!
+        private var previewLayer: AVCaptureVideoPreviewLayer!
     
         // カウントダウン表示用のラベル
         private let countdownLabel: UILabel = {

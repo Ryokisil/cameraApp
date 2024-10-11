@@ -4,7 +4,7 @@ import UIKit
 import AVFoundation
 import SwiftUI
 
-// UIViewControllerをSwiftUIで使えるようにラップする
+// UIViewControllerをSwiftUIで使えるようにする
 struct CameraViewControllerRepresentable: UIViewControllerRepresentable {
     
     func makeUIViewController(context: Context) -> CameraViewController {
@@ -12,7 +12,7 @@ struct CameraViewControllerRepresentable: UIViewControllerRepresentable {
     }
     
     func updateUIViewController(_ uiViewController: CameraViewController, context: Context) {
-        // 特に更新処理がない場合はここは空でもOK
+        // 特に更新処理がないのでこのまま
     }
 }
 
@@ -20,18 +20,26 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
     
         // ViewModelのインスタンス
         var viewModel: CameraViewModel!
+        var isFlashOn = false
+        private var previewLayer: AVCaptureVideoPreviewLayer!
         
         // UIパーツ: シャッターボタン
         private let shutterButton: UIButton = {
             let button = UIButton(type: .custom)
             button.backgroundColor = .white
-            button.layer.cornerRadius = 35   // ボタンを丸くする（直径70）
-            button.layer.borderWidth = 5     // 外側に枠を追加
-            button.layer.borderColor = UIColor.lightGray.cgColor  // 枠の色
+            button.layer.cornerRadius = 35
+            button.layer.borderWidth = 5
+            button.layer.borderColor = UIColor.lightGray.cgColor
             return button
         }()
     
-        private var previewLayer: AVCaptureVideoPreviewLayer!
+        private let flashButton: UIButton = {
+            let button = UIButton(type: .system)
+            button.setImage(UIImage(systemName: "bolt.slash.fill"), for: .normal) // 初期はフラッシュOFFのアイコン
+            button.tintColor = .white
+            button.translatesAutoresizingMaskIntoConstraints = false
+            return button
+        }()
     
         // カウントダウン表示用のラベル
         private let countdownLabel: UILabel = {
@@ -62,6 +70,15 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             
             // シャッターボタンにアクションを設定
             shutterButton.addTarget(self, action: #selector(didTapShutterButton), for: .touchUpInside)
+            // フラッシュボタンのアクションを設定
+            flashButton.addTarget(self, action: #selector(toggleFlash), for: .touchUpInside)
+            
+            //フラッシュボタンの初期状態を設定
+            if isFlashOn {
+                flashButton.setImage(UIImage(systemName: "bolt.fill"), for: .normal) // フラッシュONのアイコン
+            } else {
+                flashButton.setImage(UIImage(systemName: "bolt.slash.fill"), for: .normal) // フラッシュOFFのアイコン
+            }
         }
     
         // カメラプレビューのセットアップ
@@ -69,36 +86,46 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             previewLayer = AVCaptureVideoPreviewLayer(session: viewModel.captureSession)
             previewLayer.videoGravity = .resizeAspectFill
             previewLayer.frame = view.bounds
-            view.layer.insertSublayer(previewLayer, at: 0)  // レイヤーをビューの一番後ろに追加
+            view.layer.insertSublayer(previewLayer, at: 0)
         }
         
         // UIのセットアップ処理
         private func setupUI() {
-            view.addSubview(shutterButton)
-            view.addSubview(countdownLabel)
+            view.addSubview(shutterButton) // 撮影ボタン
+            view.addSubview(flashButton)  // フラッシュボタン
+            view.addSubview(countdownLabel) // カウントダウンラベル
+            
             shutterButton.translatesAutoresizingMaskIntoConstraints = false
             countdownLabel.translatesAutoresizingMaskIntoConstraints = false
+            flashButton.translatesAutoresizingMaskIntoConstraints = false
+            
             // シャッターボタンのレイアウト
             NSLayoutConstraint.activate([
                 shutterButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                 shutterButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
                 shutterButton.widthAnchor.constraint(equalToConstant: 70),
                 shutterButton.heightAnchor.constraint(equalToConstant: 70),
+                
+                // フラッシュボタンのレイアウト（シャッターボタンの左側に配置）
+                flashButton.centerYAnchor.constraint(equalTo: shutterButton.centerYAnchor),
+                flashButton.trailingAnchor.constraint(equalTo: shutterButton.leadingAnchor, constant: -20),
+                flashButton.widthAnchor.constraint(equalToConstant: 50),
+                flashButton.heightAnchor.constraint(equalToConstant: 50),
+                
                 // カウントダウンラベルのレイアウト
                 countdownLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                countdownLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
             ])
         }
         
     // シャッターボタン押下時のアクション
     @objc private func didTapShutterButton() {
-        startCountdown()  // カウントダウンを開始
+        startCountdown()
     }
 
     // カウントダウンを開始する
     private func startCountdown() {
         countdownLabel.isHidden = false
-        countdown(from: 3)  // 3秒からカウントダウン開始
+        countdown(from: 3)
     }
 
     // カウントダウン処理
@@ -106,7 +133,6 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
         countdownLabel.text = "\(count)"
         
         if count > 0 {
-            // 1秒後に次のカウントダウン
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 self.countdown(from: count - 1)
             }
@@ -116,9 +142,15 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             viewModel.capturePhoto()  // ViewModelに写真撮影を依頼
         }
     }
+
+    @objc func toggleFlash() {
+        isFlashOn.toggle()
+        print("Flash state toggled: \(isFlashOn)") // デバッグ用
+        flashButton.setImage(UIImage(systemName: isFlashOn ? "bolt.fill" : "bolt.slash.fill"), for: .normal)
+    }
 }
 
-    // カメラ撮影結果を受け取るためのデリゲート
+    // カメラ撮影結果を受け取る
     extension CameraViewController: CameraViewModelDelegate {
         func didCapturePhoto(_ photo: UIImage) {
             // 撮影した写真をモノトーンに加工した後に画面遷移

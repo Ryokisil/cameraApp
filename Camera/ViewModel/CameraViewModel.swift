@@ -11,6 +11,7 @@ protocol CameraViewModelDelegate: AnyObject {
 class CameraViewModel: NSObject {
     
     weak var delegate: CameraViewModelDelegate?
+    var isFlashOn: Bool = false
     
     // カメラのセッションを管理するプロパティ
     var captureSession: AVCaptureSession!
@@ -21,29 +22,94 @@ class CameraViewModel: NSObject {
         captureSession = AVCaptureSession()
         captureSession.sessionPreset = .photo
         
+        // カメラデバイスの取得
         guard let backCamera = AVCaptureDevice.default(for: .video) else {
             print("Error: No camera available")
             return
         }
         
+        // フラッシュがサポートされているか確認
+        if backCamera.hasFlash {
+            print("This device supports flash.")
+        } else {
+            print("This device does not support flash.")
+            // フラッシュがサポートされていない場合の処理
+            return
+        }
+        
+        // デバイス入力をセッションに追加
         do {
             let input = try AVCaptureDeviceInput(device: backCamera)
             captureSession.addInput(input)
         } catch {
             print("Error: \(error)")
+            return
         }
         
-        photoOutput = AVCapturePhotoOutput()
-        captureSession.addOutput(photoOutput)
+        // AVCaptureSessionの設定変更を開始
+        captureSession.beginConfiguration()
         
-        captureSession.startRunning()
+        // photoOutputの初期化
+        photoOutput = AVCapturePhotoOutput()
+        
+        // photoOutputの設定を追加
+        photoOutput.isHighResolutionCaptureEnabled = false
+        if #available(iOS 13.0, *) {
+            photoOutput.maxPhotoQualityPrioritization = .balanced
+        }
+        
+        // photoOutputをセッションに追加
+        if captureSession.canAddOutput(photoOutput) {
+            captureSession.addOutput(photoOutput)
+        } else {
+            print("Error: Unable to add photo output.")
+            captureSession.commitConfiguration()
+            return
+        }
+        
+        // 設定変更を確定
+        captureSession.commitConfiguration()
+        
+        // セッションを開始
+        DispatchQueue.global(qos: .userInitiated).async {
+            self.captureSession.startRunning()
+        }
     }
     
-    // 写真撮影処理
-    func capturePhoto() {
+    func createPhotoSettings() -> AVCapturePhotoSettings {
+        print("createPhotoSettings()内のisFlashOn: \(isFlashOn)")
         let settings = AVCapturePhotoSettings()
+
+        // フラッシュモードの設定
+        settings.flashMode = isFlashOn ? .on : .off
+
+        // フラッシュモードの確認
+        print("設定されたフラッシュモード: \(settings.flashMode.rawValue)")
+
+        // **photoOutputがフラッシュモードをサポートしているかを確認**
+        if photoOutput.supportedFlashModes.contains(settings.flashMode) {
+            print("Flash mode is supported by photoOutput")
+        } else {
+            print("Flash mode is not supported by photoOutput")
+        }
+
+        return settings
+    }
+    
+    // 写真撮影時にフラッシュ機能実装
+    func capturePhoto() {
+        // フラッシュの状態を確認
+        print("現在のフラッシュ状態: \(isFlashOn)")
+        
+        let settings = createPhotoSettings()
+        
+        // 確実にフラッシュモードが適用されるか確認
+        print("フラッシュモード during capture: \(settings.flashMode.rawValue)")
+        
+        // 写真撮影を実行
         photoOutput.capturePhoto(with: settings, delegate: self)
     }
+
     
     // 撮影された写真をモノトーンに加工し、デリゲートに渡す
     func processCapturedPhoto(_ image: UIImage) {
@@ -137,5 +203,3 @@ extension CameraViewModel: AVCapturePhotoCaptureDelegate {
         processCapturedPhoto(image)
     }
 }
-
-

@@ -109,27 +109,6 @@ class CameraViewModel: NSObject {
         // 写真撮影を実行
         photoOutput.capturePhoto(with: settings, delegate: self)
     }
-
-    
-    // 撮影された写真をモノトーンに加工し、デリゲートに渡す
-    func processCapturedPhoto(_ image: UIImage) {
-        let fixedImage = fixImageOrientation(image)
-        guard let ciImage = CIImage(image: fixedImage) else { return }
-        
-        let filter = CIFilter(name: "CIPhotoEffectMono")
-        filter?.setValue(ciImage, forKey: kCIInputImageKey)
-        
-        if let outputImage = filter?.outputImage {
-            let context = CIContext()
-            if let cgImage = context.createCGImage(outputImage, from: outputImage.extent) {
-                let monoImage = UIImage(cgImage: cgImage)
-                delegate?.didCapturePhoto(monoImage)
-                
-                // モノトーン画像をカメラロールに保存
-                UIImageWriteToSavedPhotosAlbum(monoImage, nil, nil, nil)
-            }
-        }
-    }
     
     // 画像の向きを修正する
     private func fixImageOrientation(_ image: UIImage) -> UIImage {
@@ -190,16 +169,57 @@ class CameraViewModel: NSObject {
     }
 }
 
+class PhotoProcessor {
+    // モノトーン加工を行う静的メソッド
+    static func applyMonoEffect(to image: UIImage) -> UIImage? {
+        guard let fixedImage = fixImageOrientation(image),
+              let ciImage = CIImage(image: fixedImage) else {
+            return nil
+        }
+
+        let filter = CIFilter(name: "CIPhotoEffectMono")
+        filter?.setValue(ciImage, forKey: kCIInputImageKey)
+
+        if let outputImage = filter?.outputImage {
+            let context = CIContext()
+            if let cgImage = context.createCGImage(outputImage, from: outputImage.extent) {
+                return UIImage(cgImage: cgImage)
+            }
+        }
+        return nil
+    }
+
+    // 画像の向きを修正
+    private static func fixImageOrientation(_ image: UIImage) -> UIImage? {
+        return image // 次に撮影した画像の向きを修正するやつを実装予定
+    }
+}
+
 // 写真が撮影された後に呼ばれるメソッドを実装するためのコード
 extension CameraViewModel: AVCapturePhotoCaptureDelegate {
-    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+    func photoOutput(_ output: AVCapturePhotoOutput,
+                     didFinishProcessingPhoto photo: AVCapturePhoto,
+                     error: Error?) {
+        // エラーチェック
+        if let error = error {
+            print("Error: \(error.localizedDescription)")
+            return
+        }
+
+        // 写真データの取得
         guard let photoData = photo.fileDataRepresentation(),
               let image = UIImage(data: photoData) else {
             print("Error: Unable to capture photo")
             return
         }
-        
-        // 撮影された写真をモノトーンに加工
-        processCapturedPhoto(image)
+
+        // PhotoProcessorを使ってモノトーン加工を実行
+        if let monoImage = PhotoProcessor.applyMonoEffect(to: image) {
+            // モノトーン画像が正常に生成された場合
+            delegate?.didCapturePhoto(monoImage)
+            UIImageWriteToSavedPhotosAlbum(monoImage, nil, nil, nil)
+        } else {
+            print("Error: Failed to process image.")
+        }
     }
 }

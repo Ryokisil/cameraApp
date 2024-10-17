@@ -83,13 +83,19 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
     
         // カメラプレビューのセットアップ
         private func setupCameraPreview() {
+            // セッションプリセットを4:3に設定
+            viewModel.captureSession.sessionPreset = .photo
+
+            // プレビュー用のレイヤーを設定
             previewLayer = AVCaptureVideoPreviewLayer(session: viewModel.captureSession)
-            previewLayer.videoGravity = .resizeAspectFill
+            previewLayer.videoGravity = .resizeAspect
+            
+            // プレビューを画面にフィットさせカメラレイヤーを1番下に設置
             previewLayer.frame = view.bounds
             view.layer.insertSublayer(previewLayer, at: 0)
         }
         
-        // UIのセットアップ処理
+        // UIのセットアップ
         private func setupUI() {
             view.addSubview(shutterButton)    // 撮影ボタン
             view.addSubview(flashButton)      // フラッシュボタン
@@ -102,7 +108,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             // シャッターボタンのレイアウト
             NSLayoutConstraint.activate([
                 shutterButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-                shutterButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+                shutterButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: +2),
                 shutterButton.widthAnchor.constraint(equalToConstant: 70),
                 shutterButton.heightAnchor.constraint(equalToConstant: 70)
             ])

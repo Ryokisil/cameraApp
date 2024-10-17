@@ -21,23 +21,13 @@ class CameraViewModel: NSObject {
     func setupCamera() {
         captureSession = AVCaptureSession()
         captureSession.sessionPreset = .photo
-        
+
         // カメラデバイスの取得
         guard let backCamera = AVCaptureDevice.default(for: .video) else {
             print("Error: No camera available")
             return
         }
-        
-        // フラッシュがサポートされているか確認
-        if backCamera.hasFlash {
-            print("This device supports flash.")
-        } else {
-            print("This device does not support flash.")
-            // フラッシュがサポートされていない場合の処理
-            return
-        }
-        
-        // デバイス入力をセッションに追加
+
         do {
             let input = try AVCaptureDeviceInput(device: backCamera)
             captureSession.addInput(input)
@@ -45,19 +35,18 @@ class CameraViewModel: NSObject {
             print("Error: \(error)")
             return
         }
-        
+
         // AVCaptureSessionの設定変更を開始
         captureSession.beginConfiguration()
-        
+
         // photoOutputの初期化
         photoOutput = AVCapturePhotoOutput()
-        
-        // photoOutputの設定を追加
         photoOutput.isHighResolutionCaptureEnabled = false
+
         if #available(iOS 13.0, *) {
             photoOutput.maxPhotoQualityPrioritization = .balanced
         }
-        
+
         // photoOutputをセッションに追加
         if captureSession.canAddOutput(photoOutput) {
             captureSession.addOutput(photoOutput)
@@ -66,10 +55,10 @@ class CameraViewModel: NSObject {
             captureSession.commitConfiguration()
             return
         }
-        
+
         // 設定変更を確定
         captureSession.commitConfiguration()
-        
+
         // セッションを開始
         DispatchQueue.global(qos: .userInitiated).async {
             self.captureSession.startRunning()
@@ -109,64 +98,6 @@ class CameraViewModel: NSObject {
         // 写真撮影を実行
         photoOutput.capturePhoto(with: settings, delegate: self)
     }
-    
-    // 画像の向きを修正する
-    private func fixImageOrientation(_ image: UIImage) -> UIImage {
-        guard let cgImage = image.cgImage else { return image }
-
-        // 画像の向きに応じて変換を行う
-        let orientation = image.imageOrientation
-        var transform = CGAffineTransform.identity
-
-        switch orientation {
-        case .down, .downMirrored:
-            // 上下逆さま
-            transform = transform.translatedBy(x: image.size.width, y: image.size.height)
-            transform = transform.rotated(by: .pi)
-        case .left, .leftMirrored:
-            // 左向き
-            transform = transform.translatedBy(x: image.size.width, y: 0)
-            transform = transform.rotated(by: .pi / 2)
-        case .right, .rightMirrored:
-            // 右向き
-            transform = transform.translatedBy(x: 0, y: image.size.height)
-            transform = transform.rotated(by: -.pi / 2)
-        default:
-            break
-        }
-
-        // ミラーリングを防ぐ（上下・左右反転の場合）
-        switch orientation {
-        case .upMirrored, .downMirrored:
-            transform = transform.translatedBy(x: image.size.width, y: 0)
-            transform = transform.scaledBy(x: -1, y: 1)
-        case .leftMirrored, .rightMirrored:
-            transform = transform.translatedBy(x: image.size.height, y: 0)
-            transform = transform.scaledBy(x: -1, y: 1)
-        default:
-            break
-        }
-
-        // コンテキストを作成して画像を描画
-        guard let colorSpace = cgImage.colorSpace else { return image }
-        guard let context = CGContext(data: nil, width: Int(image.size.width), height: Int(image.size.height), bitsPerComponent: cgImage.bitsPerComponent, bytesPerRow: cgImage.bytesPerRow, space: colorSpace, bitmapInfo: cgImage.bitmapInfo.rawValue) else {
-            return image
-        }
-
-        context.concatenate(transform)
-        
-        // 向きに応じて描画する位置を設定
-        switch orientation {
-        case .left, .leftMirrored, .right, .rightMirrored:
-            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: image.size.height, height: image.size.width))
-        default:
-            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: image.size.width, height: image.size.height))
-        }
-
-        // 新しいUIImageを作成
-        guard let newCgImage = context.makeImage() else { return image }
-        return UIImage(cgImage: newCgImage)
-    }
 }
 
 class PhotoProcessor {
@@ -191,7 +122,60 @@ class PhotoProcessor {
 
     // 画像の向きを修正
     private static func fixImageOrientation(_ image: UIImage) -> UIImage? {
-        return image // 次に撮影した画像の向きを修正するやつを実装予定
+        // すでに正しい向きならそのまま返す
+        if image.imageOrientation == .up {
+            return image
+        }
+
+        // 画像のコンテキストを作成
+        guard let cgImage = image.cgImage else { return nil }
+        let width = image.size.width
+        let height = image.size.height
+        var transform = CGAffineTransform.identity
+
+        // 向きに応じてアフィン変換を設定
+        switch image.imageOrientation {
+        case .down, .downMirrored:
+            transform = transform.translatedBy(x: width, y: height).rotated(by: .pi)
+        case .left, .leftMirrored:
+            transform = transform.translatedBy(x: width, y: 0).rotated(by: .pi / 2)
+        case .right, .rightMirrored:
+            transform = transform.translatedBy(x: 0, y: height).rotated(by: -.pi / 2)
+        case .up, .upMirrored:
+            break
+        @unknown default:
+            return image
+        }
+
+        // ミラー処理（反転）
+        switch image.imageOrientation {
+        case .upMirrored, .downMirrored:
+            transform = transform.translatedBy(x: width, y: 0).scaledBy(x: -1, y: 1)
+        case .leftMirrored, .rightMirrored:
+            transform = transform.translatedBy(x: height, y: 0).scaledBy(x: -1, y: 1)
+        default:
+            break
+        }
+
+        // コンテキストの作成
+        guard let colorSpace = cgImage.colorSpace else { return nil }
+        guard let context = CGContext(data: nil, width: Int(width), height: Int(height), bitsPerComponent: cgImage.bitsPerComponent, bytesPerRow: 0, space: colorSpace, bitmapInfo: cgImage.bitmapInfo.rawValue) else {
+            return nil
+        }
+
+        context.concatenate(transform)
+
+        // 描画範囲を設定し、画像を描画
+        switch image.imageOrientation {
+        case .left, .leftMirrored, .right, .rightMirrored:
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: height, height: width))
+        default:
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        }
+
+        // 新しいCGImageを作成し、UIImageに変換
+        guard let newCGImage = context.makeImage() else { return nil }
+        return UIImage(cgImage: newCGImage)
     }
 }
 

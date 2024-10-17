@@ -60,7 +60,7 @@ class CameraViewModel: NSObject {
         captureSession.commitConfiguration()
 
         // セッションを開始
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.main.async {
             self.captureSession.startRunning()
         }
     }

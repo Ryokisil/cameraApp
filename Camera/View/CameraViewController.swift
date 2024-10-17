@@ -45,7 +45,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
         private let countdownLabel: UILabel = {
             let label = UILabel()
             label.font = UIFont.boldSystemFont(ofSize: 80)
-            label.textColor = .white
+            label.textColor = .black
             label.textAlignment = .center
             label.translatesAutoresizingMaskIntoConstraints = false
             label.isHidden = true  // 初期状態では非表示
@@ -91,29 +91,34 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
         
         // UIのセットアップ処理
         private func setupUI() {
-            view.addSubview(shutterButton) // 撮影ボタン
-            view.addSubview(flashButton)  // フラッシュボタン
-            view.addSubview(countdownLabel) // カウントダウンラベル
-            
+            view.addSubview(shutterButton)    // 撮影ボタン
+            view.addSubview(flashButton)      // フラッシュボタン
+            view.addSubview(countdownLabel)   // カウントダウンラベル
+
             shutterButton.translatesAutoresizingMaskIntoConstraints = false
             countdownLabel.translatesAutoresizingMaskIntoConstraints = false
             flashButton.translatesAutoresizingMaskIntoConstraints = false
-            
+
             // シャッターボタンのレイアウト
             NSLayoutConstraint.activate([
                 shutterButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                 shutterButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
                 shutterButton.widthAnchor.constraint(equalToConstant: 70),
-                shutterButton.heightAnchor.constraint(equalToConstant: 70),
-                
-                // フラッシュボタンのレイアウト（シャッターボタンの左側に配置）
+                shutterButton.heightAnchor.constraint(equalToConstant: 70)
+            ])
+
+            // フラッシュボタンのレイアウト（シャッターボタンの左側に配置）
+            NSLayoutConstraint.activate([
                 flashButton.centerYAnchor.constraint(equalTo: shutterButton.centerYAnchor),
                 flashButton.trailingAnchor.constraint(equalTo: shutterButton.leadingAnchor, constant: -20),
                 flashButton.widthAnchor.constraint(equalToConstant: 50),
-                flashButton.heightAnchor.constraint(equalToConstant: 50),
-                
-                // カウントダウンラベルのレイアウト
+                flashButton.heightAnchor.constraint(equalToConstant: 50)
+            ])
+
+            // カウントダウンラベルのレイアウト（画面の中央に配置）
+            NSLayoutConstraint.activate([
                 countdownLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                countdownLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
             ])
         }
         

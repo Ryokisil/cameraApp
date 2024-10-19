@@ -33,6 +33,14 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             return button
         }()
     
+        private let flipButton: UIButton = {
+            let button = UIButton(type: .system)
+            button.setImage(UIImage(systemName: "camera.rotate"), for: .normal)  // カメラ切り替え用のアイコン
+            button.tintColor = .white  // アイコンの色を白に設定
+            button.translatesAutoresizingMaskIntoConstraints = false
+            return button
+        }()
+    
         private let flashButton: UIButton = {
             let button = UIButton(type: .system)
             button.setImage(UIImage(systemName: "bolt.slash.fill"), for: .normal) // 初期はフラッシュOFFのアイコン
@@ -72,6 +80,8 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             shutterButton.addTarget(self, action: #selector(didTapShutterButton), for: .touchUpInside)
             // フラッシュボタンのアクションを設定
             flashButton.addTarget(self, action: #selector(toggleFlash), for: .touchUpInside)
+            //インバックカメラ切り替えアクション設定
+            flipButton.addTarget(self, action: #selector(flipButtonTapped), for: .touchUpInside)
             
             //フラッシュボタンの初期状態を設定
             if isFlashOn {
@@ -90,8 +100,11 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             previewLayer = AVCaptureVideoPreviewLayer(session: viewModel.captureSession)
             previewLayer.videoGravity = .resizeAspect
             
+            // プレビューの位置とサイズを設定
+            let previewHeight = view.bounds.height * 0.8  // 高さを画面の80%に調整
+            previewLayer.frame = CGRect(x: 0, y: 50, width: view.bounds.width, height: previewHeight)  // y: 50で少し上に移動
+            
             // プレビューを画面にフィットさせカメラレイヤーを1番下に設置
-            previewLayer.frame = view.bounds
             view.layer.insertSublayer(previewLayer, at: 0)
         }
         
@@ -100,6 +113,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             view.addSubview(shutterButton)    // 撮影ボタン
             view.addSubview(flashButton)      // フラッシュボタン
             view.addSubview(countdownLabel)   // カウントダウンラベル
+            view.addSubview(flipButton)  // フリップボタン
 
             shutterButton.translatesAutoresizingMaskIntoConstraints = false
             countdownLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -121,10 +135,18 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
                 flashButton.heightAnchor.constraint(equalToConstant: 50)
             ])
 
-            // カウントダウンラベルのレイアウト（画面の中央に配置）
+            // カウントダウンラベルを画面の中央に配置したい
             NSLayoutConstraint.activate([
                 countdownLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
                 countdownLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            ])
+            
+            // フリップボタンのレイアウト
+            NSLayoutConstraint.activate([
+                flipButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),  // 画面上部に配置
+                flipButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),  // 右端に配置
+                flipButton.widthAnchor.constraint(equalToConstant: 50),
+                flipButton.heightAnchor.constraint(equalToConstant: 50)
             ])
         }
         
@@ -158,6 +180,21 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
         isFlashOn.toggle()
         print("Flash state toggled: \(isFlashOn)") // デバッグ用
         flashButton.setImage(UIImage(systemName: isFlashOn ? "bolt.fill" : "bolt.slash.fill"), for: .normal)
+    }
+    
+    @objc func flipButtonTapped() {
+        // フェードアウトアニメーション
+        UIView.animate(withDuration: 0.3, animations: {
+            self.view.alpha = 0.0  // 画面を一度透明にする
+        }) { _ in
+            // カメラの切り替えを行う
+            self.viewModel.flipCamera()
+            
+            // フェードインアニメーション
+            UIView.animate(withDuration: 0.3) {
+                self.view.alpha = 1.0  // 画面を元に戻す
+            }
+        }
     }
 }
 

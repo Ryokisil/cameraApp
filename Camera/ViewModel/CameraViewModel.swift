@@ -98,6 +98,49 @@ class CameraViewModel: NSObject {
         // 写真撮影を実行
         photoOutput.capturePhoto(with: settings, delegate: self)
     }
+    //カメラのフロントとバックを切り替える関数
+    func flipCamera() {
+        // 現在の入力デバイスを取得
+        guard let currentInput = captureSession.inputs.first as? AVCaptureDeviceInput else {
+            return
+        }
+
+        // 切り替えるカメラデバイスを取得（バックカメラ → フロントカメラ or フロントカメラ → バックカメラ）
+        let newCameraDevice: AVCaptureDevice?
+        if currentInput.device.position == .back {
+            newCameraDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front)
+        } else {
+            newCameraDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+        }
+
+        // 新しいカメラが取得できなかった場合は終了
+        guard let newDevice = newCameraDevice else {
+            return
+        }
+
+        do {
+            // 新しいカメラの入力を作成
+            let newInput = try AVCaptureDeviceInput(device: newDevice)
+            
+            // セッションの設定を再構成
+            captureSession.beginConfiguration()
+            
+            // 現在のカメラ入力を削除
+            captureSession.removeInput(currentInput)
+            
+            // 新しいカメラ入力を追加
+            if captureSession.canAddInput(newInput) {
+                captureSession.addInput(newInput)
+            } else {
+                print("Error: Unable to add new camera input")
+            }
+            
+            // 設定変更を確定
+            captureSession.commitConfiguration()
+        } catch {
+            print("Error: \(error)")
+        }
+    }
 }
 
 class PhotoProcessor {

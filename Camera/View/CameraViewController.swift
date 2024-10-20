@@ -60,6 +60,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             return label
         }()
         
+        // アプリ起動時のみviewDidLoadで初期設定を行う
         override func viewDidLoad() {
             super.viewDidLoad()
             
@@ -146,6 +147,15 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
                 flipButton.heightAnchor.constraint(equalToConstant: 50)
             ])
         }
+    // 初回撮影後に再度カメラプレビュー画面に戻ったらそれ以降はviewWillAppearで状態管理する
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // カメラ画面が再度表示されるたびにフラッシュ状態をリセット
+        isFlashOn = false
+        updateFlashButtonIcon(isFlashOn: isFlashOn)
+    }
+    
     // フラッシュボタンのアイコンを更新する
     func updateFlashButtonIcon(isFlashOn: Bool) {
         let flashIconName = isFlashOn ? "bolt.fill" : "bolt.slash.fill"

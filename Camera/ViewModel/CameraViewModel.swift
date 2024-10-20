@@ -6,6 +6,7 @@ import UIKit
 // ViewModel用のプロトコル定義
 protocol CameraViewModelDelegate: AnyObject {
     func didCapturePhoto(_ photo: UIImage)
+    func updateFlashButtonIcon(isFlashOn: Bool)
 }
 
 class CameraViewModel: NSObject {
@@ -60,11 +61,13 @@ class CameraViewModel: NSObject {
         captureSession.commitConfiguration()
 
         // セッションを開始
-        DispatchQueue.main.async {
-            self.captureSession.startRunning()
+        if !captureSession.isRunning {
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.captureSession.startRunning()
+            }
         }
     }
-    
+    // 写真を撮影する際の設定
     func createPhotoSettings() -> AVCapturePhotoSettings {
         print("createPhotoSettings()内のisFlashOn: \(isFlashOn)")
         let settings = AVCapturePhotoSettings()
@@ -85,16 +88,12 @@ class CameraViewModel: NSObject {
         return settings
     }
     
-    // 写真撮影時にフラッシュ機能実装
+    // カメラで写真を撮影する処理
     func capturePhoto() {
-        // フラッシュの状態を確認
-        print("現在のフラッシュ状態: \(isFlashOn)")
-        
-        let settings = createPhotoSettings()
-        
-        // 確実にフラッシュモードが適用されるか確認
-        print("フラッシュモード during capture: \(settings.flashMode.rawValue)")
-        
+        print("写真撮影を開始")
+
+        let settings = AVCapturePhotoSettings()  // シンプルに設定を生成
+
         // 写真撮影を実行
         photoOutput.capturePhoto(with: settings, delegate: self)
     }
@@ -142,7 +141,7 @@ class CameraViewModel: NSObject {
         }
     }
 }
-
+// 写真加工に関わるクラス
 class PhotoProcessor {
     // モノトーン加工を行う静的メソッド
     static func applyMonoEffect(to image: UIImage) -> UIImage? {
@@ -222,11 +221,9 @@ class PhotoProcessor {
     }
 }
 
-// 写真が撮影された後に呼ばれるメソッドを実装するためのコード
+// 写真が撮影された後に呼ばれるコード
 extension CameraViewModel: AVCapturePhotoCaptureDelegate {
-    func photoOutput(_ output: AVCapturePhotoOutput,
-                     didFinishProcessingPhoto photo: AVCapturePhoto,
-                     error: Error?) {
+    func photoOutput(_ output: AVCapturePhotoOutput,didFinishProcessingPhoto photo: AVCapturePhoto,error: Error?) {
         // エラーチェック
         if let error = error {
             print("Error: \(error.localizedDescription)")
@@ -238,6 +235,26 @@ extension CameraViewModel: AVCapturePhotoCaptureDelegate {
               let image = UIImage(data: photoData) else {
             print("Error: Unable to capture photo")
             return
+        }
+        
+        // 撮影後にフラッシュの状態を初期化（オフに戻す）
+        isFlashOn = false
+        
+        // アイコンもオフの状態にリセット
+        delegate?.updateFlashButtonIcon(isFlashOn: false)
+        
+        // フラッシュの物理的な状態もオフに
+        guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else {
+            print("No torch available")
+            return
+        }
+        
+        do {
+            try device.lockForConfiguration()
+            device.torchMode = .off  // フラッシュを物理的にオフに
+            device.unlockForConfiguration()
+        } catch {
+            print("Error turning off the torch: \(error)")
         }
 
         // PhotoProcessorを使ってモノトーン加工を実行

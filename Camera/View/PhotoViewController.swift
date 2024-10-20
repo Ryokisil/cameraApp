@@ -6,7 +6,7 @@ class PhotoViewController: UIViewController {
     
     var capturedImage: UIImage!
     
-    // UIパーツ: 画像表示ビューと終了ボタン
+    // 画像表示ビューと終了ボタン
     private let imageView: UIImageView = {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFit

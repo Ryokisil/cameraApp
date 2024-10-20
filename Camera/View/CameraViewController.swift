@@ -23,7 +23,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
         var isFlashOn = false
         private var previewLayer: AVCaptureVideoPreviewLayer!
         
-        // UIパーツ: シャッターボタン
+        // シャッターボタン
         private let shutterButton: UIButton = {
             let button = UIButton(type: .custom)
             button.backgroundColor = .white
@@ -32,7 +32,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             button.layer.borderColor = UIColor.lightGray.cgColor
             return button
         }()
-    
+        // インバックカメラ切り替えボタンのラベル
         private let flipButton: UIButton = {
             let button = UIButton(type: .system)
             button.setImage(UIImage(systemName: "camera.rotate"), for: .normal)  // カメラ切り替え用のアイコン
@@ -40,7 +40,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             button.translatesAutoresizingMaskIntoConstraints = false
             return button
         }()
-    
+        // フラッシュボタンのラベル
         private let flashButton: UIButton = {
             let button = UIButton(type: .system)
             button.setImage(UIImage(systemName: "bolt.slash.fill"), for: .normal) // 初期はフラッシュOFFのアイコン
@@ -83,12 +83,9 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             //インバックカメラ切り替えアクション設定
             flipButton.addTarget(self, action: #selector(flipButtonTapped), for: .touchUpInside)
             
-            //フラッシュボタンの初期状態を設定
-            if isFlashOn {
-                flashButton.setImage(UIImage(systemName: "bolt.fill"), for: .normal) // フラッシュONのアイコン
-            } else {
-                flashButton.setImage(UIImage(systemName: "bolt.slash.fill"), for: .normal) // フラッシュOFFのアイコン
-            }
+            // アプリ起動時はフラッシュをオフに設定
+            isFlashOn = false
+            flashButton.setImage(UIImage(systemName: "bolt.slash.fill"), for: .normal)  // フラッシュOFFのアイコン
         }
     
         // カメラプレビューのセットアップ
@@ -101,8 +98,8 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             previewLayer.videoGravity = .resizeAspect
             
             // プレビューの位置とサイズを設定
-            let previewHeight = view.bounds.height * 0.8  // 高さを画面の80%に調整
-            previewLayer.frame = CGRect(x: 0, y: 50, width: view.bounds.width, height: previewHeight)  // y: 50で少し上に移動
+            let previewHeight = view.bounds.height * 0.8
+            previewLayer.frame = CGRect(x: 0, y: 50, width: view.bounds.width, height: previewHeight)
             
             // プレビューを画面にフィットさせカメラレイヤーを1番下に設置
             view.layer.insertSublayer(previewLayer, at: 0)
@@ -113,7 +110,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             view.addSubview(shutterButton)    // 撮影ボタン
             view.addSubview(flashButton)      // フラッシュボタン
             view.addSubview(countdownLabel)   // カウントダウンラベル
-            view.addSubview(flipButton)  // フリップボタン
+            view.addSubview(flipButton)       // フリップボタン
 
             shutterButton.translatesAutoresizingMaskIntoConstraints = false
             countdownLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -149,6 +146,11 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
                 flipButton.heightAnchor.constraint(equalToConstant: 50)
             ])
         }
+    // フラッシュボタンのアイコンを更新する
+    func updateFlashButtonIcon(isFlashOn: Bool) {
+        let flashIconName = isFlashOn ? "bolt.fill" : "bolt.slash.fill"
+        flashButton.setImage(UIImage(systemName: flashIconName), for: .normal)
+    }
         
     // シャッターボタン押下時のアクション
     @objc private func didTapShutterButton() {
@@ -175,13 +177,38 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             viewModel.capturePhoto()  // ViewModelに写真撮影を依頼
         }
     }
-
+    // フラッシュボタン設置
     @objc func toggleFlash() {
-        isFlashOn.toggle()
-        print("Flash state toggled: \(isFlashOn)") // デバッグ用
-        flashButton.setImage(UIImage(systemName: isFlashOn ? "bolt.fill" : "bolt.slash.fill"), for: .normal)
+        // フラッシュの点灯/消灯を制御
+        guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else {
+            print("Error: No camera available or torch not supported")
+            return
+        }
+        
+        do {
+            try device.lockForConfiguration()
+            
+            // 現在のフラッシュ状態に応じてトーチモードを設定
+            if isFlashOn {
+                device.torchMode = .off  // フラッシュをオフに
+            } else {
+                try device.setTorchModeOn(level: AVCaptureDevice.maxAvailableTorchLevel)  // フラッシュをオンに
+            }
+            
+            device.unlockForConfiguration()
+            
+            // フラッシュの状態をトグル
+            isFlashOn.toggle()
+            
+            // アイコンの更新
+            flashButton.setImage(UIImage(systemName: isFlashOn ? "bolt.fill" : "bolt.slash.fill"), for: .normal)
+            
+        } catch {
+            print("Error toggling torch: \(error)")
+        }
     }
     
+    // カメラ切り替え時ボタン設置と切り替え時にアニメーション追加
     @objc func flipButtonTapped() {
         // フェードアウトアニメーション
         UIView.animate(withDuration: 0.3, animations: {
@@ -190,7 +217,6 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             // カメラの切り替えを行う
             self.viewModel.flipCamera()
             
-            // フェードインアニメーション
             UIView.animate(withDuration: 0.3) {
                 self.view.alpha = 1.0  // 画面を元に戻す
             }

@@ -141,7 +141,7 @@ class CameraViewModel: NSObject {
         }
     }
 }
-// 写真加工に関わるクラス
+// 撮影した写真を処理するクラス
 class PhotoProcessor {
     // モノトーン加工を行う静的メソッド
     static func applyMonoEffect(to image: UIImage) -> UIImage? {
@@ -219,6 +219,28 @@ class PhotoProcessor {
         guard let newCGImage = context.makeImage() else { return nil }
         return UIImage(cgImage: newCGImage)
     }
+    
+    // 画像をDocumentディレクトリに保存する関数
+    static func saveImageToDocumentDirectory(image: UIImage, imageName: String) {
+        // DocumentディレクトリのURLを取得
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            print("ドキュメントディレクトリが見つかりませんでした")
+            return
+        }
+        
+        // 画像の保存先URLを作成
+        let fileURL = documentsDirectory.appendingPathComponent("\(imageName).jpg")
+        
+        // 画像をJPEGデータに変換して保存
+        if let imageData = image.jpegData(compressionQuality: 0.8) {
+            do {
+                try imageData.write(to: fileURL)
+                print("画像が保存されました: \(fileURL)")
+            } catch {
+                print("画像の保存中にエラーが発生しました: \(error)")
+            }
+        }
+    }
 }
 
 // 写真が撮影された後に呼ばれるコード
@@ -261,7 +283,10 @@ extension CameraViewModel: AVCapturePhotoCaptureDelegate {
         if let monoImage = PhotoProcessor.applyMonoEffect(to: image) {
             // モノトーン画像が正常に生成された場合
             delegate?.didCapturePhoto(monoImage)
+            // カメラロールに保存
             UIImageWriteToSavedPhotosAlbum(monoImage, nil, nil, nil)
+            // ドキュメントディレクトリに保存
+            PhotoProcessor.saveImageToDocumentDirectory(image: monoImage, imageName: "capturedPhoto")
         } else {
             print("Error: Failed to process image.")
         }

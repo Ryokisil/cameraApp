@@ -34,7 +34,7 @@ class PhotoViewController: UIViewController {
         if let capturedImage = capturedImage {
             imageView.image = capturedImage
         } else {
-            print("Error: capturedImage is nil")
+            print("エラー: 撮影された画像がありません")
         }
     }
     

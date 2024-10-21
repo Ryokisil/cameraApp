@@ -16,12 +16,14 @@ struct CameraViewControllerRepresentable: UIViewControllerRepresentable {
     }
 }
 
-class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
+class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCaptureVideoDataOutputSampleBufferDelegate {
     
         // ViewModelのインスタンス
         var viewModel: CameraViewModel!
         var isFlashOn = false
         private var previewLayer: AVCaptureVideoPreviewLayer!
+        var captureSession: AVCaptureSession?
+        var videoPreviewLayer: AVCaptureVideoPreviewLayer?
         
         // シャッターボタン
         private let shutterButton: UIButton = {
@@ -68,6 +70,30 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             viewModel = CameraViewModel()
             viewModel.delegate = self
             
+            // AVCaptureSession の初期化
+            captureSession = AVCaptureSession()
+            captureSession?.sessionPreset = .photo
+            
+            guard let captureDevice = AVCaptureDevice.default(for: .video) else { return }
+            
+            do {
+                let input = try AVCaptureDeviceInput(device: captureDevice)
+                captureSession?.addInput(input)
+                
+                let videoOutput = AVCaptureVideoDataOutput()
+                videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "videoQueue"))
+                captureSession?.addOutput(videoOutput)
+                
+                videoPreviewLayer = AVCaptureVideoPreviewLayer(session: captureSession!)
+                videoPreviewLayer?.videoGravity = .resizeAspectFill
+                videoPreviewLayer?.frame = view.layer.bounds
+                view.layer.addSublayer(videoPreviewLayer!)
+                
+                captureSession?.startRunning()
+            } catch {
+                print("カメラの設定中にエラーが発生しました: \(error)")
+            }
+            
             // カメラの設定をViewModelに任せる
             viewModel.setupCamera()
             
@@ -87,6 +113,11 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             // アプリ起動時はフラッシュをオフに設定
             isFlashOn = false
             flashButton.setImage(UIImage(systemName: "bolt.slash.fill"), for: .normal)  // フラッシュOFFのアイコン
+        }
+    
+        // カメラのフレームごとに呼ばれる
+        func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+            // 映像フレームごとに処理を行う
         }
     
         // カメラプレビューのセットアップ
@@ -191,7 +222,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
     @objc func toggleFlash() {
         // フラッシュの点灯/消灯を制御
         guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else {
-            print("Error: No camera available or torch not supported")
+            print("エラー: カメラが利用できないか、またはトーチがサポートされていません")
             return
         }
         
@@ -214,7 +245,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             flashButton.setImage(UIImage(systemName: isFlashOn ? "bolt.fill" : "bolt.slash.fill"), for: .normal)
             
         } catch {
-            print("Error toggling torch: \(error)")
+            print("トーチの切り替え中にエラーが発生しました: \(error)")
         }
     }
     

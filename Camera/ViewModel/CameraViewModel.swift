@@ -25,7 +25,7 @@ class CameraViewModel: NSObject {
 
         // カメラデバイスの取得
         guard let backCamera = AVCaptureDevice.default(for: .video) else {
-            print("Error: No camera available")
+            print("エラー: カメラが利用できません")
             return
         }
 
@@ -52,7 +52,7 @@ class CameraViewModel: NSObject {
         if captureSession.canAddOutput(photoOutput) {
             captureSession.addOutput(photoOutput)
         } else {
-            print("Error: Unable to add photo output.")
+            print("エラー: 写真を追加できませんでした")
             captureSession.commitConfiguration()
             return
         }
@@ -80,9 +80,9 @@ class CameraViewModel: NSObject {
 
         // **photoOutputがフラッシュモードをサポートしているかを確認**
         if photoOutput.supportedFlashModes.contains(settings.flashMode) {
-            print("Flash mode is supported by photoOutput")
+            print("フラッシュモードをサポートしています")
         } else {
-            print("Flash mode is not supported by photoOutput")
+            print("フラッシュモードをサポートしていません")
         }
 
         return settings
@@ -131,7 +131,7 @@ class CameraViewModel: NSObject {
             if captureSession.canAddInput(newInput) {
                 captureSession.addInput(newInput)
             } else {
-                print("Error: Unable to add new camera input")
+                print("エラー: 新しいカメラ入力を追加できませんでした")
             }
             
             // 設定変更を確定
@@ -255,7 +255,7 @@ extension CameraViewModel: AVCapturePhotoCaptureDelegate {
         // 写真データの取得
         guard let photoData = photo.fileDataRepresentation(),
               let image = UIImage(data: photoData) else {
-            print("Error: Unable to capture photo")
+            print("エラー: 写真をキャプチャできませんでした")
             return
         }
         
@@ -267,7 +267,7 @@ extension CameraViewModel: AVCapturePhotoCaptureDelegate {
         
         // フラッシュの物理的な状態もオフに
         guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else {
-            print("No torch available")
+            print("エラー: トーチが利用できません")
             return
         }
         
@@ -276,7 +276,7 @@ extension CameraViewModel: AVCapturePhotoCaptureDelegate {
             device.torchMode = .off  // フラッシュを物理的にオフに
             device.unlockForConfiguration()
         } catch {
-            print("Error turning off the torch: \(error)")
+            print("エラー: トーチをオフにする際に問題が発生しました: \(error)")
         }
 
         // PhotoProcessorを使ってモノトーン加工を実行
@@ -288,7 +288,7 @@ extension CameraViewModel: AVCapturePhotoCaptureDelegate {
             // ドキュメントディレクトリに保存
             PhotoProcessor.saveImageToDocumentDirectory(image: monoImage, imageName: "capturedPhoto")
         } else {
-            print("Error: Failed to process image.")
+            print("エラー: 画像の処理に失敗しました")
         }
     }
 }

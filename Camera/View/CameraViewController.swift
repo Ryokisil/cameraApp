@@ -28,7 +28,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
         // シャッターボタン
         private let shutterButton: UIButton = {
             let button = UIButton(type: .custom)
-            button.backgroundColor = .white
+            button.backgroundColor = UIColor(red: 1.0, green: 0.8, blue: 0.86, alpha: 1.0)
             button.layer.cornerRadius = 35
             button.layer.borderWidth = 5
             button.layer.borderColor = UIColor.lightGray.cgColor
@@ -38,7 +38,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
         private let flipButton: UIButton = {
             let button = UIButton(type: .system)
             button.setImage(UIImage(systemName: "camera.rotate"), for: .normal)  // カメラ切り替え用のアイコン
-            button.tintColor = .white  // アイコンの色を白に設定
+            button.tintColor = UIColor(red: 0.75, green: 0.85, blue: 1.0, alpha: 1.0)
             button.translatesAutoresizingMaskIntoConstraints = false
             return button
         }()
@@ -46,7 +46,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
         private let flashButton: UIButton = {
             let button = UIButton(type: .system)
             button.setImage(UIImage(systemName: "bolt.slash.fill"), for: .normal) // 初期はフラッシュOFFのアイコン
-            button.tintColor = .white
+            button.tintColor = UIColor(red: 0.75, green: 1.0, blue: 0.85, alpha: 1.0)
             button.translatesAutoresizingMaskIntoConstraints = false
             return button
         }()
@@ -55,12 +55,22 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
         private let countdownLabel: UILabel = {
             let label = UILabel()
             label.font = UIFont.boldSystemFont(ofSize: 80)
-            label.textColor = .black
+            label.textColor = UIColor(red: 1.0, green: 0.9, blue: 0.8, alpha: 1.0)
             label.textAlignment = .center
             label.translatesAutoresizingMaskIntoConstraints = false
             label.isHidden = true  // 初期状態では非表示
             return label
         }()
+    
+        // 設定用の歯車アイコン
+        private let settingsButton: UIButton = {
+            let button = UIButton(type: .system)
+            button.setImage(UIImage(systemName: "gearshape"), for: .normal) // 歯車アイコン
+            button.tintColor = UIColor(red: 0.9, green: 0.8, blue: 1.0, alpha: 1.0)
+            button.translatesAutoresizingMaskIntoConstraints = false
+            return button
+        }()
+
         
         // アプリ起動時のみviewDidLoadで初期設定を行う
         override func viewDidLoad() {
@@ -69,10 +79,8 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
             // ViewModelの初期化と設定
             viewModel = CameraViewModel()
             viewModel.delegate = self
-            
             // AVCaptureSession の初期化
             captureSession = AVCaptureSession()
-            captureSession?.sessionPreset = .photo
             
             guard let captureDevice = AVCaptureDevice.default(for: .video) else { return }
             
@@ -89,7 +97,10 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
                 videoPreviewLayer?.frame = view.layer.bounds
                 view.layer.addSublayer(videoPreviewLayer!)
                 
-                captureSession?.startRunning()
+                DispatchQueue.global(qos: .userInitiated).async {
+                        self.captureSession?.startRunning()
+                }
+                
             } catch {
                 print("カメラの設定中にエラーが発生しました: \(error)")
             }
@@ -112,9 +123,8 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
             
             // アプリ起動時はフラッシュをオフに設定
             isFlashOn = false
-            flashButton.setImage(UIImage(systemName: "bolt.slash.fill"), for: .normal)  // フラッシュOFFのアイコン
+            flashButton.setImage(UIImage(systemName: "bolt.slash.fill"), for: .normal)
         }
-    
         // カメラのフレームごとに呼ばれる
         func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
             // 映像フレームごとに処理を行う
@@ -122,20 +132,38 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
     
         // カメラプレビューのセットアップ
         private func setupCameraPreview() {
-            // セッションプリセットを4:3に設定
-            viewModel.captureSession.sessionPreset = .photo
 
             // プレビュー用のレイヤーを設定
             previewLayer = AVCaptureVideoPreviewLayer(session: viewModel.captureSession)
-            previewLayer.videoGravity = .resizeAspect
+            // 解像度に応じたアスペクト比の変更を適用
+            switch viewModel.captureSession.sessionPreset {
+            case .photo: // 4:3
+                previewLayer.videoGravity = .resizeAspect  // 4:3
+            case .high, .medium: // 16:9
+                previewLayer.videoGravity = .resizeAspectFill  // 16:9
+            default:
+                previewLayer.videoGravity = .resizeAspect  // デフォルトは4:3
+            }
             
             // プレビューの位置とサイズを設定
             let previewHeight = view.bounds.height * 0.8
             previewLayer.frame = CGRect(x: 0, y: 50, width: view.bounds.width, height: previewHeight)
             
             // プレビューを画面にフィットさせカメラレイヤーを1番下に設置
+            view.layer.sublayers?.removeAll()  // これで古いレイヤーを削除
             view.layer.insertSublayer(previewLayer, at: 0)
         }
+    
+        func restartSessionAfterResolutionChange() {
+            viewModel.captureSession?.stopRunning()  // セッションを停止
+            viewModel.captureSession?.beginConfiguration()
+
+            // 必要な解像度設定処理がここに入る
+            viewModel.captureSession?.commitConfiguration()
+            
+            viewModel.captureSession?.startRunning()  // セッションを再スタート
+        }
+
         
         // UIのセットアップ
         private func setupUI() {
@@ -143,6 +171,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
             view.addSubview(flashButton)      // フラッシュボタン
             view.addSubview(countdownLabel)   // カウントダウンラベル
             view.addSubview(flipButton)       // フリップボタン
+            view.addSubview(settingsButton)   // 歯車ボタン
 
             shutterButton.translatesAutoresizingMaskIntoConstraints = false
             countdownLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -177,6 +206,17 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
                 flipButton.widthAnchor.constraint(equalToConstant: 50),
                 flipButton.heightAnchor.constraint(equalToConstant: 50)
             ])
+            
+            // 歯車ボタンのレイアウト
+            NSLayoutConstraint.activate([
+                settingsButton.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 20),
+                settingsButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+                settingsButton.widthAnchor.constraint(equalToConstant: 30),
+                settingsButton.heightAnchor.constraint(equalToConstant: 30)
+            ])
+            
+            // タップ時に設定画面へ遷移
+            settingsButton.addTarget(self, action: #selector(didTapSettingsButton), for: .touchUpInside)
         }
     // 初回撮影後に再度カメラプレビュー画面に戻ったらそれ以降はviewWillAppearで状態管理する
     override func viewWillAppear(_ animated: Bool) {
@@ -262,6 +302,12 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
                 self.view.alpha = 1.0  // 画面を元に戻す
             }
         }
+    }
+    
+    @objc private func didTapSettingsButton() {
+        // 設定画面へ遷移
+        let settingsVC = SettingsViewController()
+        navigationController?.pushViewController(settingsVC, animated: true)
     }
 }
 

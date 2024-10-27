@@ -11,12 +11,28 @@ protocol CameraViewModelDelegate: AnyObject {
 
 class CameraViewModel: NSObject {
     
+    @Published var isGridFeatureEnabled: Bool = false
     weak var delegate: CameraViewModelDelegate?
     var isFlashOn: Bool = false
     
     // カメラのセッションを管理するプロパティ
     var captureSession: AVCaptureSession!
     private var photoOutput: AVCapturePhotoOutput!
+    
+    enum SaveLocation: String {
+        case cameraRoll = "cameraRoll"
+        case documentDirectory = "documentDirectory"
+    }
+    
+    var saveLocation: SaveLocation {
+        get {
+            let storedValue = UserDefaults.standard.string(forKey: "saveLocation") ?? SaveLocation.cameraRoll.rawValue
+            return SaveLocation(rawValue: storedValue) ?? .cameraRoll
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: "saveLocation")
+        }
+    }
     
     // カメラの初期設定を行う
     func setupCamera() {
@@ -141,26 +157,9 @@ class CameraViewModel: NSObject {
         }
     }
 }
+
 // 撮影した写真を処理するクラス
 class PhotoProcessor {
-    // モノトーン加工を行う静的メソッド
-    static func applyMonoEffect(to image: UIImage) -> UIImage? {
-        guard let fixedImage = fixImageOrientation(image),
-              let ciImage = CIImage(image: fixedImage) else {
-            return nil
-        }
-
-        let filter = CIFilter(name: "CIPhotoEffectMono")
-        filter?.setValue(ciImage, forKey: kCIInputImageKey)
-
-        if let outputImage = filter?.outputImage {
-            let context = CIContext()
-            if let cgImage = context.createCGImage(outputImage, from: outputImage.extent) {
-                return UIImage(cgImage: cgImage)
-            }
-        }
-        return nil
-    }
 
     // 画像の向きを修正
     private static func fixImageOrientation(_ image: UIImage) -> UIImage? {
@@ -259,6 +258,18 @@ extension CameraViewModel: AVCapturePhotoCaptureDelegate {
             return
         }
         
+        // 保存先に応じた処理
+        switch saveLocation {
+        case .cameraRoll:
+            // カメラロールに保存
+            UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+            print("写真をカメラロールに保存しました")
+        case .documentDirectory:
+            // ドキュメントディレクトリに保存
+            PhotoProcessor.saveImageToDocumentDirectory(image: image, imageName: "capturedPhoto")
+            print("写真をドキュメントディレクトリに保存しました")
+        }
+        
         // 撮影後にフラッシュの状態を初期化（オフに戻す）
         isFlashOn = false
         
@@ -278,17 +289,9 @@ extension CameraViewModel: AVCapturePhotoCaptureDelegate {
         } catch {
             print("エラー: トーチをオフにする際に問題が発生しました: \(error)")
         }
-
-        // PhotoProcessorを使ってモノトーン加工を実行
-        if let monoImage = PhotoProcessor.applyMonoEffect(to: image) {
-            // モノトーン画像が正常に生成された場合
-            delegate?.didCapturePhoto(monoImage)
-            // カメラロールに保存
-            UIImageWriteToSavedPhotosAlbum(monoImage, nil, nil, nil)
-            // ドキュメントディレクトリに保存
-            PhotoProcessor.saveImageToDocumentDirectory(image: monoImage, imageName: "capturedPhoto")
-        } else {
-            print("エラー: 画像の処理に失敗しました")
-        }
+        
+        let originalImage = image
+        // オリジナル画像が正常に取得された場合
+        delegate?.didCapturePhoto(originalImage)
     }
 }

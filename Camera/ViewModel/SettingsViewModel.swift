@@ -11,14 +11,19 @@ class SettingsViewModel: ObservableObject {
         didSet {
             // トグルの状態が変更されたらUserDefaultsに保存
             UserDefaults.standard.set(isGridFeatureEnabled, forKey: gridFeatureKey)
+            // トグルが変更された際に通知を送信
+            NotificationCenter.default.post(name: .gridFeatureDidChange, object: isGridFeatureEnabled)
         }
     }
 
     // 初期化時にUserDefaultsから状態を読み込む
     init() {
-        let savedState = UserDefaults.standard.bool(forKey: gridFeatureKey)
-        print("Saved grid feature state: \(savedState)") // デバッグログ
-        self.isGridFeatureEnabled = savedState
+            let savedState = UserDefaults.standard.bool(forKey: gridFeatureKey)
+            self.isGridFeatureEnabled = savedState
     }
 }
 
+// Notification.Nameを拡張して通知名を定義
+extension Notification.Name {
+    static let gridFeatureDidChange = Notification.Name("gridFeatureDidChange")
+}

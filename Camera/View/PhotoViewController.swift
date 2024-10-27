@@ -76,7 +76,7 @@ class PhotoViewController: UIViewController {
         navigationController?.pushViewController(filterSelectionVC, animated: true)
     }
 }
-
+// 今後写真を加工するために使う予定
 class FilterSelectionViewController: UIViewController {
 
     var selectedImage: UIImage? // 遷移元から受け取る画像

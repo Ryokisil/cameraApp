@@ -20,13 +20,13 @@ protocol SettingsDelegate: AnyObject {
 
 class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource {
    
-   var viewModel = SettingsViewModel()
    var isGridEnabled: Bool = false // グリッド表示の初期状態
    var cameraViewController: CameraViewController? // カメラビューコントローラへの参照
    var cameraViewModel: CameraViewModel?
    weak var delegate: SettingsDelegate?
    private let saveLocationPicker = UIPickerView()
    private var gridToggleSwitch: UISwitch!
+   private var viewModel = SettingsViewModel()
    var settingsViewModel: SettingsViewModel?
     
    let saveOptions = ["カメラロール", "アプリ内"]
@@ -76,7 +76,7 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
 
         
         setupUI()
-    }
+    } // viewDidLoad
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -96,11 +96,8 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
     }
     
     // トグルの状態が変更された時に呼ばれる
-    @objc func toggleChanged(_ sender: UISwitch) {
+    @objc private func toggleChanged(_ sender: UISwitch) {
         viewModel.isGridFeatureEnabled = sender.isOn
-        print("Toggled grid feature: \(sender.isOn)")
-        // デリゲートを通して CameraViewController へ通知
-        delegate?.updateGridEnabled(isEnabled: sender.isOn)
     }
     
     @objc func openAboutPage() {

@@ -1,3 +1,4 @@
+// 設定画面
 
 import UIKit
 import SwiftUI
@@ -20,14 +21,14 @@ protocol SettingsDelegate: AnyObject {
 
 class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource {
    
-   var isGridEnabled: Bool = false // グリッド表示の初期状態
-   var cameraViewController: CameraViewController? // カメラビューコントローラへの参照
-   var cameraViewModel: CameraViewModel?
-   weak var delegate: SettingsDelegate?
-   private let saveLocationPicker = UIPickerView()
-   private var gridToggleSwitch: UISwitch!
-   private var viewModel = SettingsViewModel()
-   var settingsViewModel: SettingsViewModel?
+   var isGridEnabled: Bool = false                  // グリッド表示の初期状態を設定
+   var cameraViewController: CameraViewController?  // CameraViewControllerへの参照。設定画面からカメラ画面にアクセスするために使用
+   var cameraViewModel: CameraViewModel?            // CameraViewModelへの参照。カメラのデータと設定の管理に使用
+   weak var delegate: SettingsDelegate?             // 設定画面での操作を他のコンポーネントに通知する
+   private let saveLocationPicker = UIPickerView()  // 保存先を選択するためのピッカービュー
+   private var gridToggleSwitch: UISwitch!          // グリッド表示のオンオフトグル用のスイッチ
+   private var viewModel = SettingsViewModel()      // 設定に関するデータや状態を管理するSettingsViewModelのインスタンス
+   var settingsViewModel: SettingsViewModel?        // 他のクラスから設定データを受け取るためのSettingsViewModelのインスタンス
     
    let saveOptions = ["カメラロール", "アプリ内"]
 

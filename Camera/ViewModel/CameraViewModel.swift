@@ -7,6 +7,7 @@ import UIKit
 protocol CameraViewModelDelegate: AnyObject {
     func didCapturePhoto(_ photo: UIImage)
     func updateFlashButtonIcon(isFlashOn: Bool)
+    func updateThumbnail()
 }
 
 class CameraViewModel: NSObject {
@@ -269,6 +270,9 @@ extension CameraViewModel: AVCapturePhotoCaptureDelegate {
             PhotoProcessor.saveImageToDocumentDirectory(image: image, imageName: "capturedPhoto")
             print("写真をドキュメントディレクトリに保存しました")
         }
+        
+        // サムネイルを更新
+        delegate?.updateThumbnail()
         
         // 撮影後にフラッシュの状態を初期化（オフに戻す）
         isFlashOn = false

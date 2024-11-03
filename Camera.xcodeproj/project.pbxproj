@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		535518712CAF0D25007CD1B1 /* CameraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 535518702CAF0D25007CD1B1 /* CameraApp.swift */; };
+		53D54F272CD5AD1800E618FB /* CameraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53D54F1B2CD5AD1800E618FB /* CameraApp.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,9 +29,9 @@
 
 /* Begin PBXFileReference section */
 		5355186D2CAF0D25007CD1B1 /* Camera.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Camera.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		535518702CAF0D25007CD1B1 /* CameraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraApp.swift; sourceTree = "<group>"; };
 		5355187D2CAF0D27007CD1B1 /* CameraTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CameraTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		535518872CAF0D27007CD1B1 /* CameraUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CameraUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		53D54F1B2CD5AD1800E618FB /* CameraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -93,7 +93,7 @@
 		535518642CAF0D25007CD1B1 = {
 			isa = PBXGroup;
 			children = (
-				535518702CAF0D25007CD1B1 /* CameraApp.swift */,
+				53D54F1B2CD5AD1800E618FB /* CameraApp.swift */,
 				5355186F2CAF0D25007CD1B1 /* Camera */,
 				535518802CAF0D27007CD1B1 /* CameraTests */,
 				5355188A2CAF0D27007CD1B1 /* CameraUITests */,
@@ -255,7 +255,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				535518712CAF0D25007CD1B1 /* CameraApp.swift in Sources */,
+				53D54F272CD5AD1800E618FB /* CameraApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -420,8 +420,10 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Camera/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "このアプリは写真を撮影するためにカメラを使用します";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "このアプリは撮影した写真を保存するためにフォトライブラリにアクセスします";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "撮影した写真を表示するためにフォトライブラリへのアクセスが必要です";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -453,8 +455,10 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Camera/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "このアプリは写真を撮影するためにカメラを使用します";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "このアプリは撮影した写真を保存するためにフォトライブラリにアクセスします";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "撮影した写真を表示するためにフォトライブラリへのアクセスが必要です";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

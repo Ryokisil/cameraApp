@@ -3,6 +3,7 @@
 import UIKit
 import AVFoundation
 import SwiftUI
+import Photos
 
 // UIViewControllerをSwiftUIで使えるようにする
 struct CameraViewControllerRepresentable: UIViewControllerRepresentable {
@@ -16,15 +17,24 @@ struct CameraViewControllerRepresentable: UIViewControllerRepresentable {
     }
 }
 
-class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCaptureVideoDataOutputSampleBufferDelegate {
+class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVCaptureVideoDataOutputSampleBufferDelegate, CameraViewModelDelegate {
+    func didCapturePhoto(_ photo: UIImage) {
+        // サムネイルの更新（例として表示）
+        thumbnailButton.setImage(photo, for: .normal)
+        // 撮影した画像を capturedImage にセット
+        capturedImage = photo
+        
+        // サムネイルを更新（例として表示用に使用）
+        thumbnailButton.setImage(photo, for: .normal)
+    }
     
-    // ViewModelのインスタンス
-    var viewModel: CameraViewModel!
-    var isFlashOn = false
-    private var previewLayer: AVCaptureVideoPreviewLayer!
-    var captureSession: AVCaptureSession?
-    var videoPreviewLayer: AVCaptureVideoPreviewLayer?
-    private var gridOverlayView: UIView?
+    var viewModel: CameraViewModel!                       // ViewModelのインスタンス。データ管理とUIロジックを担当。
+    var isFlashOn = false                                 // フラッシュのオン/オフ状態を保持するフラグ。
+    private var previewLayer: AVCaptureVideoPreviewLayer! // カメラのプレビューを表示するレイヤー。
+    var captureSession: AVCaptureSession?                 // カメラのキャプチャセッション。映像入力の設定を管理する。
+    var videoPreviewLayer: AVCaptureVideoPreviewLayer?    // ビデオプレビューを表示するレイヤー（プレビュー画面に表示するため）。
+    private var gridOverlayView: UIView?                  // カメラのグリッドオーバーレイ表示用のビュー。
+    var capturedImage: UIImage?                           // サムネイルに表示する撮影済みの画像。
         
     // シャッターボタン
     private let shutterButton: UIButton = {
@@ -71,7 +81,21 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }()
-
+    
+    private let imageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
+        return imageView
+    }()
+    
+    private let thumbnailButton: UIButton = {
+        let button = UIButton()
+        button.layer.cornerRadius = 5
+        button.clipsToBounds = true
+        button.layer.borderWidth = 1
+        button.layer.borderColor = UIColor.lightGray.cgColor
+        return button
+    }()
     
     // アプリ起動時のみviewDidLoadで初期設定を行う
     override func viewDidLoad() {
@@ -96,6 +120,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
         
         // ViewModelの初期化と設定
         viewModel = CameraViewModel()
+        
         viewModel.delegate = self
         // AVCaptureSession の初期化
         captureSession = AVCaptureSession()
@@ -132,12 +157,19 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
         // UIのセットアップ
         setupUI()
         
+        // サムネイル画像を設定
+        updateThumbnail()
+        
         // シャッターボタンにアクションを設定
         shutterButton.addTarget(self, action: #selector(didTapShutterButton), for: .touchUpInside)
         // フラッシュボタンのアクションを設定
         flashButton.addTarget(self, action: #selector(toggleFlash), for: .touchUpInside)
         //インバックカメラ切り替えアクション設定
         flipButton.addTarget(self, action: #selector(flipButtonTapped), for: .touchUpInside)
+        // タップ時に設定画面へ遷移
+        settingsButton.addTarget(self, action: #selector(didTapSettingsButton), for: .touchUpInside)
+        // ボタンのタップアクションを追加
+        thumbnailButton.addTarget(self, action: #selector(thumbnailTapped), for: .touchUpInside)
         
         // アプリ起動時はフラッシュをオフに設定
         isFlashOn = false
@@ -272,22 +304,24 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
         view.addSubview(countdownLabel)   // カウントダウンラベル
         view.addSubview(flipButton)       // フリップボタン
         view.addSubview(settingsButton)   // 歯車ボタン
+        view.addSubview(thumbnailButton)
 
         shutterButton.translatesAutoresizingMaskIntoConstraints = false
         countdownLabel.translatesAutoresizingMaskIntoConstraints = false
         flashButton.translatesAutoresizingMaskIntoConstraints = false
+        thumbnailButton.translatesAutoresizingMaskIntoConstraints = false
 
         // シャッターボタンのレイアウト
         NSLayoutConstraint.activate([
             shutterButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            shutterButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: +2),
+            shutterButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -12),
             shutterButton.widthAnchor.constraint(equalToConstant: 70),
             shutterButton.heightAnchor.constraint(equalToConstant: 70)
         ])
 
         // フラッシュボタンのレイアウト（シャッターボタンの左側に配置）
         NSLayoutConstraint.activate([
-            flashButton.centerYAnchor.constraint(equalTo: shutterButton.centerYAnchor),
+            flashButton.centerYAnchor.constraint(equalTo: shutterButton.centerYAnchor, constant: -5),
             flashButton.trailingAnchor.constraint(equalTo: shutterButton.leadingAnchor, constant: -20),
             flashButton.widthAnchor.constraint(equalToConstant: 50),
             flashButton.heightAnchor.constraint(equalToConstant: 50)
@@ -301,7 +335,7 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
         
         // フリップボタンのレイアウト
         NSLayoutConstraint.activate([
-            flipButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),  // 画面上部に配置
+            flipButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 7),  // 画面上部に配置
             flipButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),  // 右端に配置
             flipButton.widthAnchor.constraint(equalToConstant: 50),
             flipButton.heightAnchor.constraint(equalToConstant: 50)
@@ -315,8 +349,13 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
             settingsButton.heightAnchor.constraint(equalToConstant: 30)
         ])
         
-        // タップ時に設定画面へ遷移
-        settingsButton.addTarget(self, action: #selector(didTapSettingsButton), for: .touchUpInside)
+        // サムネイルボタンのレイアウト
+        NSLayoutConstraint.activate([
+            thumbnailButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            thumbnailButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            thumbnailButton.widthAnchor.constraint(equalToConstant: 60),
+            thumbnailButton.heightAnchor.constraint(equalToConstant: 60)
+        ])
     }
     
     // フラッシュボタンのアイコンを更新する
@@ -401,14 +440,45 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate, AVC
         let settingsVC = SettingsViewController()
         navigationController?.pushViewController(settingsVC, animated: true)
     }
-}
+    
+    // サムネイルがタップされた時の処理
+    @objc private func thumbnailTapped() {
+        print("サムネイルがタップされました")
+        guard let image = capturedImage else {
+            print("エラー: capturedImage が nil です")
+            return
+        }
+        
+        let detailVC = PhotoDetailViewController()
+        detailVC.image = image
+        detailVC.modalPresentationStyle = .fullScreen
+        present(detailVC, animated: true, completion: nil)
+    }
+    
+    func updateThumbnail() {
+        // カメラロールから最新の画像を取得
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+        fetchOptions.fetchLimit = 1
 
-    // カメラ撮影結果を受け取る
-    extension CameraViewController: CameraViewModelDelegate {
-        func didCapturePhoto(_ photo: UIImage) {
-            // 撮影した写真をモノトーンに加工した後に画面遷移
-            let photoVC = PhotoViewController()
-            photoVC.capturedImage = photo
-            navigationController?.pushViewController(photoVC, animated: true)
+        let fetchResult = PHAsset.fetchAssets(with: .image, options: fetchOptions)
+        guard let latestAsset = fetchResult.firstObject else { return }
+
+        // サムネイルサイズでリクエストを作成
+        let imageManager = PHImageManager.default() // ここでimageManagerを定義
+        let options = PHImageRequestOptions()
+        options.isSynchronous = true
+        options.deliveryMode = .highQualityFormat
+        options.resizeMode = .exact
+        options.isNetworkAccessAllowed = true
+
+        let scale = UIScreen.main.scale
+        let thumbnailSize = CGSize(width: 500 * scale, height: 700 * scale)  // 必要に応じてサイズ調整
+
+        imageManager.requestImage(for: latestAsset, targetSize: thumbnailSize, contentMode: .aspectFill, options: options) { [weak self] image, _ in
+            guard let self = self, let image = image else { return }
+            self.thumbnailButton.setImage(image, for: .normal)
+            self.capturedImage = image
         }
     }
+}
